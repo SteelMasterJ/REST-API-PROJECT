@@ -3,6 +3,7 @@
 // load modules
 const express = require('express');
 const morgan = require('morgan');
+const routes = require('./routes');
 const Sequelize = require('sequelize');
 const sequelize = new Sequelize({
   dialect: 'sqlite',
@@ -29,6 +30,7 @@ const app = express();
 app.use(morgan('dev'));
 
 // TODO setup your api routes here
+app.use('/api', routes);
 
 // setup a friendly greeting for the root route
 app.get('/', (req, res) => {
