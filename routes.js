@@ -1,13 +1,16 @@
 'use strict';
 
 const express = require('express');
-const { check, validationResult } = require('express-validator/check');
-const bcryptjs = require('bcryptjs');
-const auth = require('basic-auth');
-const User = require('./models/user');
+
 
 // Construct a router instance.
 const router = express.Router();
+
+const { check, validationResult } = require('express-validator');
+const bcryptjs = require('bcryptjs');
+const auth = require('basic-auth');
+const { sequelize } = require('./models');
+const User = require('./models/user');
 
 //async handler function
 function asyncHandler(cb){
@@ -75,15 +78,12 @@ const authenticateUser = async (req, res, next) => {
 };
 
 //GET route that returns the authenticated user.
-router.get('/users', authenticateUser, (req, res) => {
+router.get('/users', authenticateUser, asyncHandler( async (req, res) => {
     const authUser = req.currentUser;
-    
-    // Remove the password, createdAt, and updatedAt values.
-    delete authUser.dataValues.password;
-    delete authUser.dataValues.createdAt;
-    delete authUser.dataValues.updatedAt;
 
-    res.json({ authUser });
-});
+    res.json({
+        email: authUser.emailAddress
+    });
+}));
 
 module.exports = router;
