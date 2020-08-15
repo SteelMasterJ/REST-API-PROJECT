@@ -9,8 +9,8 @@ const router = express.Router();
 const { check, validationResult } = require('express-validator');
 const bcryptjs = require('bcryptjs');
 const auth = require('basic-auth');
-const { User } = require('./models/user');
-const { Course } = require('./models/course');
+const { User } = require('./models');
+const { Course } = require('./models');
 
 
 //async handler function
@@ -159,5 +159,21 @@ router.get('/courses', asyncHandler(async(req, res) => {
     res.json(courses);
 }));
 
+//GET route returns a the course (including the user that owns the course) for the provided course ID
+router.get('courses/:id', asyncHandler(async(req, res) => {
+  const courses = await Course.findAll({
+    include: [
+      {
+        model: User,
+        as: 'user',
+        attributes: ["id", "firstName", "lastName", "emailAddress"]
+      },      
+    ],
+      attributes: ["id", "title", "description", "estimatedTime", "materialsNeeded", "userId"]
+  });
+  const course = courses.find(course => course.id == req.params.id);
+
+  res.json({course})
+}));
 
 module.exports = router;
