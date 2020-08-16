@@ -96,7 +96,6 @@ router.post('/users', asyncHandler(async (req, res) => {
   const newUser = req.body;
   const allUsers = await User.findAll();
   const existingUser = allUsers.find(u => u.emailAddress === newUser.emailAddress);
-  console.log(existingUser);
   const errors = [];
   
   if(!newUser.firstName) {
