@@ -193,4 +193,40 @@ router.post('/courses', authenticateUser, asyncHandler(async(req, res) => {
   }
 }));
 
+//PUT route that updates a course and returns no content
+router.put('/courses/:id', authenticateUser, asyncHandler(async(req, res) => {
+  const authUser = req.currentUser;
+  const course = await Course.findByPk(req.params.id);
+  let errors = [];
+
+  if(authUser.id === course.userId) {
+
+    if(!req.body.title) {
+      errors.push('Please provide a value for "title".');
+    }
+  
+    if(!req.body.description) {
+      errors.push('Please provide a value for "description".');
+    }
+  
+    if(errors.length > 0) {
+      res.status(400).json({errors});
+  
+    } else {
+      await course.update({
+        title: req.body.title,
+        description: req.body.description,
+        estimatedTime: req.body.estimatedTime,
+        materialsNeeded: req.body.materialsNeeded,
+        userId: req.currentUser.id,
+      });
+    
+      res.status(204).end();
+    }
+  } else {
+    errors.push('You are not authorized to edit this course.')
+    res.status(403).json({errors}).end();
+  }
+}));
+
 module.exports = router;
