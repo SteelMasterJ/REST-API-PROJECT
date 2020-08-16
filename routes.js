@@ -6,9 +6,9 @@ const express = require('express');
 // Construct a router instance.
 const router = express.Router();
 
-const { check, validationResult } = require('express-validator');
 const bcryptjs = require('bcryptjs');
 const auth = require('basic-auth');
+const Isemail = require('isemail');
 const { User } = require('./models');
 const { Course } = require('./models');
 
@@ -49,7 +49,7 @@ const authenticateUser = async (req, res, next) => {
   
         // If the passwords match...
         if (authenticated) {
-          console.log(`Authentication successful for username: ${user.username}`);
+          console.log(`Authentication successful for username: ${user.emailAddress}`);
   
           // Then store the retrieved user object on the request object
           // so any middleware functions that follow this middleware function
@@ -92,50 +92,42 @@ router.get('/users', authenticateUser, asyncHandler( async (req, res) => {
 }));
 
 //POST route that creates a new user
-// Route that creates a new user.
-router.post('/users', [
-  check('name')
-    .exists({ checkNull: true, checkFalsy: true })
-    .withMessage('Please provide a value for "name"'),
-  check('username')
-    .exists({ checkNull: true, checkFalsy: true })
-    .withMessage('Please provide a value for "username"'),
-  check('password')
-    .exists({ checkNull: true, checkFalsy: true })
-    .withMessage('Please provide a value for "password"'),
-], asyncHandler(async (req, res) => {
-  // Attempt to get the validation result from the Request object.
-  const errors = validationResult(req);
-
-  // If there are validation errors...
-  if (!errors.isEmpty()) {
-    // Use the Array `map()` method to get a list of error messages.
-    const errorMessages = errors.array().map(error => error.msg);
-
-    // Return the validation errors to the client.
-    return res.status(400).json({ errors: errorMessages });
-  }
-
-  // check if the user already exists, and if it does do not proceed
+router.post('/users', asyncHandler(async (req, res) => {
   const newUser = req.body;
   const allUsers = await User.findAll();
   const existingUser = allUsers.find(u => u.emailAddress === newUser.emailAddress);
-  if (existingUser) {
-    errorMessage = "'Sorry, this user already exists'";
-    return res.status(400).json({ errors: errorMessage });
+  console.log(existingUser);
+  const errors = [];
+  
+  if(!newUser.firstName) {
+    errors.push('Please provide a value for "firstName".')
+  } 
+
+  if(!newUser.lastName) {
+    errors.push('Please provide a value for "lastName".')
   }
 
-  // Get the user from the request body.
-  const user = req.body;
+  if(!newUser.emailAddress) {
+    errors.push('Please provide a value for "emailAddress".')
+  } else if (!Isemail.validate(newUser.emailAddress)) {
+    errors.push('Please provide a valid email.')
+  } else if(existingUser) {
+    errors.push('Sorry, this user already exists')
+  }
 
-  // Hash the new user's password.
-  user.password = bcryptjs.hashSync(user.password);
+  if(!newUser.password) {
+    errors.push('Please provide a value for "password".')
+  } else {
+    newUser.password = bcryptjs.hashSync(newUser.password);
+  }
 
-  // Add the user to the `users` array.
-  users.push(user);
-
-  // Set the status to 201 Created and end the response.
-  return res.status(201).end();
+  if(errors.length > 0) {
+    res.status(400).json({errors});
+  } else {
+    const user = await User.create(newUser); 
+    res.status(201).location('/').end();
+  }
+  
 }));
 
 
@@ -160,20 +152,45 @@ router.get('/courses', asyncHandler(async(req, res) => {
 }));
 
 //GET route returns a the course (including the user that owns the course) for the provided course ID
-router.get('courses/:id', asyncHandler(async(req, res) => {
-  const courses = await Course.findAll({
-    include: [
-      {
-        model: User,
-        as: 'user',
-        attributes: ["id", "firstName", "lastName", "emailAddress"]
-      },      
-    ],
-      attributes: ["id", "title", "description", "estimatedTime", "materialsNeeded", "userId"]
+router.get('/courses/:id', asyncHandler(async(req, res) => {
+  const course = await Course.findByPk(req.params.id, {
+    attributes: ['id', 'title', 'description', 'estimatedTime', 'materialsNeeded'],
+    include: [{
+      model: User,
+      as: 'user',
+      attributes: ["id","firstName","lastName", "emailAddress"]
+    }]
   });
-  const course = courses.find(course => course.id == req.params.id);
+  if(course) {
+    res.json(course);
+  } else {
+    res.status(404).json({message: "Sorry, there is no course with that id."});
+  }
+}));
 
-  res.json({course})
+//POST route that creates a course, sets the Location header to the URI for the course, and returns no content
+router.post('/courses', authenticateUser, asyncHandler(async(req, res) => {
+  const newCourse = req.body;
+  // console.log(req.body);
+  const errors = [];
+
+  if(!newCourse.title) {
+    errors.push('Please provide a value for "title".');
+  }
+
+  if(!newCourse.description) {
+    errors.push('Please provide a value for "description".');
+  }
+
+  if(errors.length > 0) {
+    res.status(400).json({errors});
+  } else {
+    const course = await Course.create(newCourse);
+
+    const id = course.dataValues.id;
+  
+    res.status(201).location('/api/courses/' + id).end();
+  }
 }));
 
 module.exports = router;
