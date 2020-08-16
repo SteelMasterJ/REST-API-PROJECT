@@ -229,4 +229,25 @@ router.put('/courses/:id', authenticateUser, asyncHandler(async(req, res) => {
   }
 }));
 
+//DELETE route that deletes a course and returns no content
+router.delete('/courses/:id', authenticateUser, asyncHandler(async(req, res) => {
+  const course = await Course.findByPk(req.params.id);
+
+  // if(req.params.id !== req.currentUser.id) {
+  //   res.status(403).json({message: "Forbidden: this isn't your course"}).end();
+  // }
+  if(course && req.params.id === req.currentUser.id){
+    await course.destroy();
+
+    res.status(204).end();
+  } else if (!course){
+    res.status(404).json({
+      message: "That course id does not exist."
+    })
+  } else {
+    res.status(403).json({message: "Forbidden: this isn't your course"}).end();
+  }
+
+}));
+
 module.exports = router;
