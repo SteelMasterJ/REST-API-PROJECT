@@ -84,11 +84,13 @@ const authenticateUser = async (req, res, next) => {
 
 //GET route that returns the authenticated user.
 router.get('/users', authenticateUser, asyncHandler( async (req, res) => {
-    const authUser = req.currentUser;
-
-    res.json({
-        email: authUser.emailAddress
+    const user = await User.findAll({
+      attributes: ['id', 'firstName', 'lastName', 'emailAddress'], // filters out password, createdAt, and updatedAt
+      where: {
+        emailAddress: req.currentUser.emailAddress //displays only the logged in user
+      }
     });
+    res.json(user);
 }));
 
 //POST route that creates a new user
@@ -235,7 +237,7 @@ router.delete('/courses/:id', authenticateUser, asyncHandler(async(req, res) => 
   // if(req.params.id !== req.currentUser.id) {
   //   res.status(403).json({message: "Forbidden: this isn't your course"}).end();
   // }
-  if(course && req.params.id === req.currentUser.id){
+  if(course && course.userId === req.currentUser.id){
     await course.destroy();
 
     res.status(204).end();
